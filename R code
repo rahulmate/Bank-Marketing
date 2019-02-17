@@ -1,0 +1,277 @@
+library("caret")
+library(ggplot2)
+library(randomForest)
+library("dplyr")
+library("gridExtra")
+library(e1071)
+library(ROCR)
+library("rpart")
+library("rpart.plot")
+install.packages("DMwR")
+library(DMwR)
+path2="D:\\Capstone\\R project\\bank-additional.csv"
+final=read.csv(path2, header=T)
+path="D:\\Capstone\\R project\\bank.csv"
+bank = read.csv(path, header=T)
+head(bank)
+cols=ncol(bank)
+rows=nrow(bank)
+paste("Rows = ", as.character(rows), ", Columns = ", as.character(cols))
+str(bank)
+# check for Nulls, Zeroes for all columns
+col_name = colnames(bank) [apply(bank, 2, function(n) any(is.na(n)))]
+
+if(length(col_name) > 0) print("NULLs present") else print("No NULLs")
+
+col_name = colnames(bank) [apply(bank, 2, function(n) any(n == ""))]
+if(length(col_name) > 0) print("Blanks present") else print("No Blanks")
+
+col_name = colnames(bank) [apply(bank, 2, function(n) any(n==0))]
+print(col_name)
+if(length(col_name) > 0)
+{
+  print("Zeroes present in columns : ")
+  print(col_name)
+} else 
+  print("No Zeroes")
+summary(bank)
+col_names=colnames(bank)
+num_names=data.frame(bank$age,bank$duration,bank$campaign,bank$pdays,bank$previous,bank$emp.var.rate,
+                     bank$cons.price.idx,bank$cons.conf.idx,bank$euribor3m,bank$nr.employed)
+# check for heteroscedasticity (correlation among the x-variables)
+cor(num_names[1:10]) # gives values
+colnames(conc)
+bxplot <- function(X) {
+  ggplot(data = bank )+geom_boxplot(aes(x =y,y=X),
+                                      color="orange",
+                                      fill="blue",
+                                      alpha=0.5
+  )}
+hist(bank$age,main="age")
+bxplot(bank$age)
+hist(bank$duration,main="duration")
+bxplot(bank$duration)
+hist(bank$campaign,main="campaign")
+bxplot(bank$campaign)
+hist(bank$pdays,main="pdays")
+bxplot(bank$pdays)
+hist(bank$previous,main="previous")
+bxplot(bank$previous)
+hist(bank$emp.var.rate,main="emp.var.rate")
+bxplot(bank$emp.var.rate)
+hist(bank$cons.price.idx,main="cons.price.idx")
+bxplot(bank$cons.price.idx)
+hist(bank$cons.conf.idx,main="cons.conf.idx")
+bxplot(bank$cons.conf.idx)
+hist(bank$euribor3m,main="euribor3m")
+bxplot(bank$euribor3m)
+hist(bank$nr.employed,main="nr.employed")
+bxplot(bank$nr.employed)
+str(bank)
+ggplot(bank %>% group_by(y) %>% summarise(Count = n())) + 
+  geom_bar(aes(y, Count), stat = "identity", fill = "coral1") 
+prop.table(table(bank$y))
+compound_c <- function(X){
+  mytable <-table(bank$y,X)
+  barplot(mytable,legend = rownames(mytable))
+}
+compound_c(bank$job)
+
+compound_c(bank$marital)
+table(bank$marital)
+levels(bank$marital)[levels(bank$marital)==''] <- "married"
+
+compound_c(bank$education)
+table(bank$education)
+levels(bank$education)[levels(bank$education)==''] <- "unknown"
+
+compound_c(bank$default)#too biased data
+levels(bank$default)[levels(bank$default)==''] <- "unknown"
+compound_c(bank$housing)
+levels(bank$housing)[levels(bank$housing)==''] <- "yes"
+table(bank$y)
+compound_c(bank$loan)
+levels(bank$housing)[levels(bank$housing)==''] <- "unknown"
+compound_c(bank$contact)
+compound_c(bank$month)
+compound_c(bank$day_of_week)
+compound_c(bank$poutcome)
+chisq.test(bank$education,bank$job)
+table(bank$previous,bank$y)
+table(bank$pdays)
+table(bank$campaign)
+table(bank$job,bank$education)
+table(bank$job,bank$age)
+#Treating the missing values
+
+for (i in 1:41188) {
+  if((bank$job[i]=='') & (bank$education[i] %in% c('basic.4y','basic.6y','basic.9y','illiterate'))){
+    bank$job[i]='blue-collar'
+  }
+  else if((bank$job[i]=='') & (bank$education[i] %in% c('high.school','university.degree'))){
+    bank$job[i]='admin.'
+  }
+else if((bank$job[i]=='') & (bank$education[i] %in% c('professional.course'))){
+  bank$job[i]='technician'
+}
+  else if((bank$job[i]=='') & (bank$education[i]=='unknown')){
+    bank$job[i]='admin.'
+  }
+
+  }
+
+
+#Shuffle the data
+grp = runif(nrow(bank))
+combine = bank[order(grp),]
+# split the dataset into train and test
+sampledata = sample(2, nrow(bank), replace=T, prob=c(0.7,0.3))
+train = bank[sampledata==1,]
+test = bank[sampledata==2,]
+# number of records in train and test datasets
+nrow(train)
+nrow(test)
+
+# build the logistic regression model
+# GLM - generalised linear model
+glm1 = glm(y ~ ., family = "binomial", data=train)
+
+# summarise model
+summary(glm)
+###################################################
+# cross validation technique
+train_Control = trainControl(method="cv", number=10)
+cvmodel1 = train(y~., data=train, trControl=train_Control,
+                 method="glm", family=binomial())
+summary(cvmodel1)
+cvmodel1$results
+cvmodel1$finalModel
+pdct_cv = predict(glm1,train,type="response")
+pdct_cv = ifelse(pdct_cv <= 0.45, "no", "yes")
+
+# build the confusion matrix
+table(predicted = pdct_cv, actual = train$y)
+#######################################################
+# predict the Y-values
+predict_y = predict(glm1,test,type="response")
+head(predict_y)
+
+table(train$y)
+predictions = ifelse(predict_y <=0.5, "no", "yes") 
+# build the confusion matrix
+table(predicted = predictions,actual = test$y)
+predictions = ifelse(predict_y <=0.5,"no", "yes") 
+# param1 -> actual Y
+# param2 -> predicted Y
+# param3 -> positive class (0/1, Yes/No etc..)
+confusionMatrix(test$y, as.factor(predictions),positive="yes")
+
+# ROC curve is generated by plotting TPR against the FPR
+# 0.5 < GOOD_MODEL <= 1
+pr = prediction(predict_y, test$y)
+summary(pr)
+perf = performance(pr, measure = "tpr", x.measure = "fpr")
+plot(perf)
+##########################################################################
+glm2 = glm(y ~ job + default + contact + month + duration + campaign + pdays + emp.var.rate 
+           + cons.price.idx + cons.conf.idx , family = "binomial", data=train)
+summary(glm2)
+train_Control = trainControl(method="cv", number=10)
+cvmodel2 = train(y~ job + default + contact + month + duration + campaign + pdays + emp.var.rate 
+                 + cons.price.idx + cons.conf.idx , data=train, trControl=train_Control,
+                 method="glm", family=binomial())
+summary(cvmodel2)
+cvmodel2$results
+cvmodel2$finalModel
+pdct_cv2 = predict(glm2,train,type="response")
+pdct_cv2 = ifelse(pdct_cv2 <= 0.45, "no", "yes")
+
+# build the confusion matrix
+table(predicted = pdct_cv2, actual = train$y)
+#######################################################
+# predict the Y-values
+predict_y2 = predict(glm2,test,type="response")
+head(predict_y2)
+
+table(train$y)
+predictions2 = ifelse(predict_y2 <=0.5, "no", "yes") 
+# build the confusion matrix
+table(predicted = predictions2,actual = test$y)
+predictions2 = ifelse(predict_y2 <=0.5,"no", "yes") 
+# param1 -> actual Y
+# param2 -> predicted Y
+# param3 -> positive class (0/1, Yes/No etc..)
+confusionMatrix(test$y, as.factor(predictions2),positive="yes")
+############################################################################
+############################################################################
+train_x = train[,1:20]
+train_y = train[,21]
+rf1 = randomForest(train_x, factor(train_y) )
+rf1
+pdct_rf1 = predict(rf1, test)
+table(predicted=pdct_rf1,actual=test$y)
+confusionMatrix(pdct_rf1,test$y,
+                positive = "yes")
+pdct_rf1
+varUsed(rf1, by.tree = F, count=F)
+importance(rf1)
+train_x2 = train[,c(1,2,9,10,11,12,13,15,16,19,20)]
+train_y2 = train[,21]
+rf2 = randomForest(train_x2, factor(train_y2) )
+rf2
+pdct_rf2 = predict(rf2, test)
+table(predicted=pdct_rf2,actual=test$y)
+confusionMatrix(pdct_rf2,test$y,
+                positive = "yes")
+pdct_rf2
+varUsed(rf2, by.tree = F, count=F)
+importance(rf2)
+###################################################################################decision tree
+sampledata = sample(2, nrow(bank), replace=T, prob=c(0.7,0.3))
+train = bank[sampledata==1,]
+test = bank[sampledata==2,]
+dt_bank = rpart(y ~., method="class", data=train)
+dt_bank
+# always use rpart.rplot with these parameters to get a good visual output
+rpart.plot(dt_bank, type=4, extra=101,
+           box.palette = "GnBu",
+           branch.lty = 3,
+           shadow.col = "gray",
+           nn=T)
+pdct_dt = predict(dt_bank, test, type="class")
+confusionMatrix(test[,21],pdct_dt)
+# to find the importance of variables
+dt_bank$variable.importance
+dt_bank2 = rpart(y ~ duration + nr.employed + euribor3m + emp.var.rate + cons.conf.idx
+                + cons.price.idx + month , method="class", data=train)
+dt_bank2
+# always use rpart.rplot with these parameters to get a good visual output
+rpart.plot(dt_bank2, type=4, extra=101,
+           box.palette = "GnBu",
+           branch.lty = 3,
+           shadow.col = "gray",
+           nn=T)
+pdct_dt2 = predict(dt_bank2, test, type="class")
+confusionMatrix(test[,21],pdct_dt2)
+##########################################################################################
+##########################################################################################SVM
+cols1=ncol(final)
+rows1=nrow(final)
+paste("Rows = ", as.character(rows1), ", Columns = ", as.character(cols1))
+
+# check for Nulls, Zeroes for all columns
+col_name = colnames(bank) [apply(bank, 2, function(n) any(is.na(n)))]
+
+if(length(col_name) > 0) print("NULLs present") else print("No NULLs")
+
+col_name = colnames(bank) [apply(bank, 2, function(n) any(n == ""))]
+if(length(col_name) > 0) print("Blanks present") else print("No Blanks")
+
+col_name = colnames(bank) [apply(bank, 2, function(n) any(n==0))]
+print(col_name)
+if(length(col_name) > 0)
+{
+  print("Zeroes present in columns : ")
+  print(col_name)
+} else 
+  print("No Zeroes")
